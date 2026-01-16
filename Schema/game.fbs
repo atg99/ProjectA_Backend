@@ -1,0 +1,34 @@
+namespace GamePacket;
+
+// 1. 패킷 안에 들어갈 수 있는 테이블들을 정의
+table LoginReqPacket {
+  token: string;
+}
+
+table LoginResPacket {
+  success: bool;
+  message: string;
+  my_uid: long;
+}
+
+table ChatPacket {
+  sender_id: string;
+  message: string;
+  timestamp: long;
+}
+
+// 2. Union 정의: 이 패킷들이 'PacketData'라는 하나의 그룹이 됨
+union PacketData { 
+  LoginReqPacket, 
+  LoginResPacket, 
+  ChatPacket 
+}
+
+// 3. 최상위 패킷 정의
+table GameMessage {
+  // 실제 데이터 (어떤 패킷인지 내부적으로 타입 정보가 포함됨)
+  data: PacketData; 
+}
+
+// 4. 루트 타입 지정
+root_type GameMessage;
