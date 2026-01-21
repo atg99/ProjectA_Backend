@@ -3,6 +3,7 @@ import cors from 'cors';
 import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
+import inventoryRoutes from './routes/inventory';
 
 import { TcpServer } from './tcpServer';
 
@@ -10,12 +11,13 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const TCP_PORT = Number(process.env.TCP_PORT) || 7777;
+const TCP_PORT = Number(process.env.TCP_PORT) || 57776;
 
 app.use(cors());
 app.use(bodyParser.json());
 
 app.use('/auth', authRoutes);
+app.use('/inventory', inventoryRoutes);
 
 app.get('/', (req, res) => {
     res.send('Hybrid Game Server API is running');

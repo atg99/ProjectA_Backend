@@ -21,7 +21,15 @@
     - `POST /auth/login`: Credential validation, JWT generation.
 - **Database**: Connected to `gamedb` (Docker MySQL).
 
-### B. TCP Game Server
+### B. Inventory API (HTTP/Express)
+- **Routes**:
+    - `POST /inventory/save`: Saves grid size and item entries (Transaction-based).
+    - `POST /inventory/load`: Retrieves inventory state.
+- **Data Model**:
+    - `inventories` table: Stores grid dimensions (`grid_width`, `grid_height`).
+    - `inventory_items` table: Stores individual items (`primary_asset_id`, `qty`, `x`, `y`, `b_rotated`).
+
+### C. TCP Game Server
 - **Port**: 57776 (Updated)
 - **Architecture**:
     - `TcpServer`: Handles connection events and packet framing.
@@ -32,7 +40,8 @@
     - **Protocol**: Uses `GameMessage` union containing `LoginReqPacket` or `ChatPacket`.
     - **Logic**: Handles Login (JWT validation) and Chat (Broadcast).
 
-### C. Test Client (Node.js)
+
+### D. Test Client (Node.js)
 - **Folder**: `/Client`
 - **Features**:
     - Auto-registers/logins via HTTP.
@@ -40,7 +49,7 @@
     - Sends Authenticated `LoginReqPacket`.
     - Sends Periodic `ChatPacket` messages.
 
-### D. Protocol (FlatBuffers)
+### E. Protocol (FlatBuffers)
 - **Folder**: `/Schema`
 - **Generates**: TypeScript (Server/Client), C++ (Unreal).
 - **Structure**:
@@ -57,7 +66,7 @@
 │   │   ├── app.ts          # Entry Point
 │   │   ├── tcpServer.ts    # TCP Listener
 │   │   ├── sessionManager.ts
-│   │   ├── routes/         # Auth API
+│   │   ├── routes/         # Auth & Inventory API
 │   │   ├── packet/         # Packet Logic (Parsers/Handlers)
 │   │   └── packet_gen/     # Generated FlatBuffers code
 │   ├── .env
@@ -78,3 +87,4 @@
 - [x] Authentication Flow (JWT)
 - [x] Schema Refactoring (Union `GameMessage`)
 - [x] Test Client Verification (End-to-End Success)
+- [x] Inventory System (Save/Load API)

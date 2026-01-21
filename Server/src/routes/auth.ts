@@ -60,12 +60,33 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
         }
 
         const user = rows[0];
-        const token = jwt.sign({ uid: user.uid, username: user.username }, JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign({ uid: user.uid, username: user.username }, JWT_SECRET, { expiresIn: '24h' });
 
         res.json({ token });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+// Verify Token
+router.post('/verify', async (req: Request, res: Response): Promise<void> => {
+    const { token } = req.body;
+    console.log(`[Verify] Request received. Token: ${token}`);
+
+    if (!token) {
+        console.log('[Verify] Token is missing');
+        res.status(400).json({ message: 'Token is required' });
+        return;
+    }
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET) as { uid: number; username: string };
+        console.log(`[Verify] Success. UID: ${decoded.uid}, Username: ${decoded.username}`);
+        res.json({ uid: decoded.uid, username: decoded.username });
+    } catch (error) {
+        console.error('[Verify] Validation failed:', error);
+        res.status(401).json({ message: 'Invalid or expired token' });
     }
 });
 
