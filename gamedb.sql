@@ -59,3 +59,42 @@ CREATE TABLE `inventory_items` (
   -- 인벤토리가 삭제되면 내부 아이템도 함께 삭제
   CONSTRAINT `fk_item_inventory` FOREIGN KEY (`inventory_id`) REFERENCES `inventories` (`inventory_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='인벤토리 아이템 목록';
+
+-- 창고 (Stash) 컨테이너
+-- 유저당 1개의 레코드만 존재하며, 업그레이드 시 grid_height 값을 늘려주는 방식입니다.
+CREATE TABLE `stashes` (
+  `stash_id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '창고 고유 ID',
+  `uid` BIGINT NOT NULL COMMENT '소유자 UID',
+  
+  -- 가로는 보통 10칸 고정, 세로가 28칸 -> 68칸 등으로 늘어남
+  `grid_width` INT NOT NULL DEFAULT 10 COMMENT '가로 크기 (고정)',
+  `grid_height` INT NOT NULL DEFAULT 30 COMMENT '세로 크기 (업그레이드 시 증가)',
+  
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+  PRIMARY KEY (`stash_id`),
+  -- 유저 1명당 1개의 창고만 가지므로 UNIQUE INDEX 사용
+  UNIQUE INDEX `uk_stash_uid` (`uid`),
+  CONSTRAINT `fk_stash_user` FOREIGN KEY (`uid`) REFERENCES `users` (`uid`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='유저 창고 (단일 스크롤형)';
+
+-- 창고 아이템 목록
+-- 구조는 인벤토리와 동일하지만, y좌표가 매우 커질 수 있습니다.
+CREATE TABLE `stash_items` (
+  `stash_entry_id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '창고 아이템 엔트리 ID',
+  `stash_id` BIGINT NOT NULL COMMENT '소속 창고 ID',
+  `primary_asset_id` VARCHAR(255) NOT NULL COMMENT '아이템 에셋 식별자',
+  
+  `qty` INT NOT NULL DEFAULT 1 COMMENT '수량',
+  `x` INT NOT NULL DEFAULT 0 COMMENT 'X 좌표 (0 ~ grid_width-1)',
+  `y` INT NOT NULL DEFAULT 0 COMMENT 'Y 좌표 (0 ~ grid_height-1, 스크롤 위치)',
+  `b_rotated` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '회전 여부',
+  
+  `stored_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  
+  PRIMARY KEY (`stash_entry_id`),
+  -- 특정 창고의 아이템을 빠르게 조회
+  INDEX `idx_item_stash` (`stash_id`),
+  CONSTRAINT `fk_item_stash` FOREIGN KEY (`stash_id`) REFERENCES `stashes` (`stash_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='창고 아이템 목록';
