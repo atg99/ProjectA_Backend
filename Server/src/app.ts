@@ -4,6 +4,7 @@ import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import inventoryRoutes from './routes/inventory';
+import stashRoutes from './routes/stash';
 
 import { TcpServer } from './tcpServer';
 
@@ -18,6 +19,7 @@ app.use(bodyParser.json());
 
 app.use('/auth', authRoutes);
 app.use('/inventory', inventoryRoutes);
+app.use('/stash', stashRoutes);
 
 app.get('/', (req, res) => {
     res.send('Hybrid Game Server API is running');
