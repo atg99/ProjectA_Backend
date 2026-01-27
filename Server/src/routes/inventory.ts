@@ -8,6 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_key';
 
 // Interface for inventory items
 interface InventoryItem {
+    item_entry_id: number;
     primary_asset_id: string;
     qty: number;
     x: number;
@@ -61,6 +62,7 @@ router.post('/save', async (req: Request, res: Response): Promise<void> => {
     }
 
     const connection = await pool.getConnection();
+    console.log(`[Inventory] Saving for UID: ${uid}. Width: ${grid_width}, Height: ${grid_height}. Entries: ${saved_entries.length}`);
     try {
         await connection.beginTransaction();
 
@@ -120,6 +122,7 @@ router.post('/load', async (req: Request, res: Response): Promise<void> => {
     }
 
     try {
+        console.log(`[Inventory] Loading for UID: ${uid}`);
         const [invRows] = await pool.execute<RowDataPacket[]>('SELECT inventory_id, grid_width, grid_height FROM inventories WHERE uid = ?', [uid]);
 
         if (invRows.length === 0) {
@@ -134,9 +137,10 @@ router.post('/load', async (req: Request, res: Response): Promise<void> => {
 
         const { inventory_id, grid_width, grid_height } = invRows[0];
 
-        const [itemRows] = await pool.execute<RowDataPacket[]>('SELECT primary_asset_id, qty, x, y, b_rotated FROM inventory_items WHERE inventory_id = ?', [inventory_id]);
+        const [itemRows] = await pool.execute<RowDataPacket[]>('SELECT item_entry_id, primary_asset_id, qty, x, y, b_rotated FROM inventory_items WHERE inventory_id = ?', [inventory_id]);
 
         const saved_entries = itemRows.map(row => ({
+            item_entry_id: row.item_entry_id,
             primary_asset_id: row.primary_asset_id,
             qty: row.qty,
             x: row.x,

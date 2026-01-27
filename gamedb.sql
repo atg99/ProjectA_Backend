@@ -98,3 +98,54 @@ CREATE TABLE `stash_items` (
   INDEX `idx_item_stash` (`stash_id`),
   CONSTRAINT `fk_item_stash` FOREIGN KEY (`stash_id`) REFERENCES `stashes` (`stash_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='창고 아이템 목록';
+
+CREATE TABLE `market_listings` (
+  `listing_id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '매물 고유 번호 (PK)',
+  `seller_uid` BIGINT NOT NULL COMMENT '판매자 UID',
+  
+  -- 아이템 정보 (인벤토리에서 가져옴)
+  `primary_asset_id` VARCHAR(255) NOT NULL COMMENT '아이템 에셋 식별자',
+  `qty` INT NOT NULL DEFAULT 1 COMMENT '판매 수량',
+  
+  -- 거래 정보
+  `price` BIGINT NOT NULL COMMENT '총 판매 가격 (단가가 아닌 묶음 가격)',
+  `status` TINYINT NOT NULL DEFAULT 0 COMMENT '상태 (0:판매중, 1:판매완료, 2:취소/만료)',
+  
+  -- 메타데이터 (내구도, 강화수치 등을 JSON으로 저장하여 확장성 확보)
+  `item_metadata` JSON NULL COMMENT '아이템 세부 속성 (강화, 내구도 등)',
+  
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '등록 시간',
+  `sold_at` TIMESTAMP NULL COMMENT '판매된 시간',
+  
+  PRIMARY KEY (`listing_id`),
+  
+  -- [중요] 검색 최적화 인덱스 (책의 목차 역할)
+  -- 1. 아이템 종류별로 가격 싼 순서대로 보여줘!
+  INDEX `idx_market_search` (`status`, `primary_asset_id`, `price`),
+  
+  -- 2. 내 판매 내역 보여줘!
+  INDEX `idx_seller_history` (`seller_uid`, `status`),
+  
+  -- 외래키: 유저가 삭제되면 매물도 삭제 (혹은 별도 정책에 따름)
+  CONSTRAINT `fk_listing_seller` FOREIGN KEY (`seller_uid`) REFERENCES `users` (`uid`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='거래소 매물 목록';
+
+CREATE TABLE `market_logs` (
+  `log_id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '로그 ID',
+  `listing_id` BIGINT NOT NULL COMMENT '원본 매물 ID',
+  
+  `seller_uid` BIGINT NOT NULL COMMENT '판매자',
+  `buyer_uid` BIGINT NOT NULL COMMENT '구매자',
+  
+  `primary_asset_id` VARCHAR(255) NOT NULL,
+  `qty` INT NOT NULL,
+  `price` BIGINT NOT NULL COMMENT '최종 거래 가격',
+  `fee` BIGINT NOT NULL DEFAULT 0 COMMENT '수수료 (거래소 수수료가 있다면 기록)',
+  
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '거래 발생 시간',
+  
+  PRIMARY KEY (`log_id`),
+  INDEX `idx_log_buyer` (`buyer_uid`),
+  INDEX `idx_log_seller` (`seller_uid`),
+  INDEX `idx_log_item` (`primary_asset_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='거래소 거래 기록 (로그)';

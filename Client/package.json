@@ -13,7 +13,8 @@
   "dependencies": {
     "axios": "^1.13.2",
     "dotenv": "^17.2.3",
-    "flatbuffers": "^25.9.23"
+    "flatbuffers": "^25.9.23",
+    "mysql2": "^3.16.2"
   },
   "devDependencies": {
     "@types/node": "^25.0.7",
