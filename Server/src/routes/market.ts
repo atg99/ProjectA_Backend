@@ -94,7 +94,7 @@ router.get('/listings', async (req: Request, res: Response): Promise<void> => {
                 page,
                 limit,
                 total,
-                totalPages: Math.ceil(total / limit)
+                total_pages: Math.ceil(total / limit)
             }
         });
     } catch (error) {

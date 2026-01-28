@@ -49,6 +49,10 @@ CREATE TABLE `inventory_items` (
   `item_entry_id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '아이템 엔트리 ID',
   `inventory_id` BIGINT NOT NULL COMMENT '소속 인벤토리 ID',
   `primary_asset_id` VARCHAR(255) NOT NULL COMMENT '아이템 에셋 식별자',
+
+  -- 아이템 고유 속성 (내구도, 강화, 옵션 등)
+  `item_metadata` JSON NULL COMMENT '아이템 인스턴스 데이터',
+
   `qty` INT NOT NULL DEFAULT 1 COMMENT '수량',
   `x` INT NOT NULL DEFAULT 0 COMMENT 'X 좌표',
   `y` INT NOT NULL DEFAULT 0 COMMENT 'Y 좌표',
@@ -86,6 +90,9 @@ CREATE TABLE `stash_items` (
   `stash_id` BIGINT NOT NULL COMMENT '소속 창고 ID',
   `primary_asset_id` VARCHAR(255) NOT NULL COMMENT '아이템 에셋 식별자',
   
+  -- 아이템 고유 속성 (내구도, 강화, 옵션 등)
+  `item_metadata` JSON NULL COMMENT '아이템 인스턴스 데이터',
+
   `qty` INT NOT NULL DEFAULT 1 COMMENT '수량',
   `x` INT NOT NULL DEFAULT 0 COMMENT 'X 좌표 (0 ~ grid_width-1)',
   `y` INT NOT NULL DEFAULT 0 COMMENT 'Y 좌표 (0 ~ grid_height-1, 스크롤 위치)',
@@ -149,3 +156,9 @@ CREATE TABLE `market_logs` (
   INDEX `idx_log_seller` (`seller_uid`),
   INDEX `idx_log_item` (`primary_asset_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='거래소 거래 기록 (로그)';
+
+ALTER TABLE `inventory_items`
+ADD COLUMN `item_metadata` JSON NULL COMMENT '아이템 인스턴스 데이터' AFTER `primary_asset_id`;
+
+ALTER TABLE `stash_items`
+ADD COLUMN `item_metadata` JSON NULL COMMENT '아이템 인스턴스 데이터' AFTER `primary_asset_id`;
