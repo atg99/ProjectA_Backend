@@ -8,7 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_key';
 
 // Interface for stash items (same structure as inventory items)
 interface StashItem {
-    stash_entry_id: number;
+    item_entry_id: number;
     primary_asset_id: string;
     qty: number;
     x: number;
@@ -137,7 +137,7 @@ router.post('/load', async (req: Request, res: Response): Promise<void> => {
         const [itemRows] = await pool.execute<RowDataPacket[]>('SELECT stash_entry_id, primary_asset_id, qty, x, y, b_rotated FROM stash_items WHERE stash_id = ?', [stash_id]);
 
         const saved_entries = itemRows.map(row => ({
-            stash_entry_id: row.stash_entry_id,
+            item_entry_id: row.stash_entry_id,
             primary_asset_id: row.primary_asset_id,
             qty: row.qty,
             x: row.x,

@@ -146,26 +146,26 @@ router.post('/listings', async (req: Request, res: Response): Promise<void> => {
     try {
         await connection.beginTransaction();
 
-        // 1. Verify Item Ownership & Quantity from Inventory
+        // 1. Verify Item Ownership & Quantity from Stash
         const [items] = await connection.execute<RowDataPacket[]>(
-            'SELECT * FROM inventory_items WHERE item_entry_id = ? FOR UPDATE',
+            'SELECT * FROM stash_items WHERE stash_entry_id = ? FOR UPDATE',
             [item_entry_id]
         );
 
         if (items.length === 0) {
             await connection.rollback();
-            res.status(404).json({ message: 'Item not found in inventory' });
+            res.status(404).json({ message: 'Item not found in stash' });
             return;
         }
 
         const item = items[0];
 
-        const [invCheck] = await connection.execute<RowDataPacket[]>(
-            'SELECT uid FROM inventories WHERE inventory_id = ?',
-            [item.inventory_id]
+        const [stashCheck] = await connection.execute<RowDataPacket[]>(
+            'SELECT uid FROM stashes WHERE stash_id = ?',
+            [item.stash_id]
         );
 
-        if (invCheck.length === 0 || invCheck[0].uid !== uid) {
+        if (stashCheck.length === 0 || stashCheck[0].uid !== uid) {
             await connection.rollback();
             res.status(403).json({ message: 'You do not own this item' });
             return;
@@ -178,9 +178,9 @@ router.post('/listings', async (req: Request, res: Response): Promise<void> => {
         }
 
         if (item.qty === qty) {
-            await connection.execute('DELETE FROM inventory_items WHERE item_entry_id = ?', [item_entry_id]);
+            await connection.execute('DELETE FROM stash_items WHERE stash_entry_id = ?', [item_entry_id]);
         } else {
-            await connection.execute('UPDATE inventory_items SET qty = qty - ? WHERE item_entry_id = ?', [qty, item_entry_id]);
+            await connection.execute('UPDATE stash_items SET qty = qty - ? WHERE stash_entry_id = ?', [qty, item_entry_id]);
         }
 
         // 2. Insert into Market

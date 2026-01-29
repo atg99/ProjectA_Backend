@@ -22,9 +22,9 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use('/auth', authRoutes);
-app.use('/inventory', inventoryRoutes);
-app.use('/stash', stashRoutes);
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/inventory', inventoryRoutes);
+app.use('/api/v1/stash', stashRoutes);
 app.use('/api/v1/market', marketRoutes);
 
 app.get('/', (req, res) => {
