@@ -78,12 +78,63 @@ router.post('/save', async (req: Request, res: Response): Promise<void> => {
             stashId = result.insertId;
         }
 
-        // 2. Clear existing items to overwrite
-        await connection.execute('DELETE FROM stash_items WHERE stash_id = ?', [stashId]);
+        // --- Upsert Logic Start ---
 
-        // 3. Insert new items
-        if (saved_entries.length > 0) {
-            const values = saved_entries.map(item => [
+        // 2. Fetch existing items from DB
+        const [existingRows] = await connection.execute<RowDataPacket[]>(
+            'SELECT stash_entry_id FROM stash_items WHERE stash_id = ?',
+            [stashId]
+        );
+        const existingIds = new Set(existingRows.map(r => r.stash_entry_id));
+        const incomeIds = new Set<number>();
+
+        const toInsert: StashItem[] = [];
+        const toUpdate: StashItem[] = [];
+
+        // 3. Categorize Incoming Items
+        for (const item of saved_entries) {
+            // item_entry_id comes from client, maps to stash_entry_id in DB
+            const id = item.item_entry_id;
+
+            if (id && id > 0 && existingIds.has(id)) {
+                // Exists -> Update
+                toUpdate.push(item);
+                incomeIds.add(id);
+            } else {
+                // New -> Insert
+                toInsert.push(item);
+            }
+        }
+
+        // 4. Delete Missing Items
+        const toDeleteIds: number[] = [];
+        existingIds.forEach(id => {
+            if (!incomeIds.has(id)) {
+                toDeleteIds.push(id);
+            }
+        });
+
+        if (toDeleteIds.length > 0) {
+            const placeholders = toDeleteIds.map(() => '?').join(',');
+            await connection.execute(
+                `DELETE FROM stash_items WHERE stash_entry_id IN (${placeholders})`,
+                toDeleteIds
+            );
+        }
+
+        // 5. Update Existing Items
+        for (const item of toUpdate) {
+            await connection.execute(
+                `UPDATE stash_items 
+                 SET qty = ?, x = ?, y = ?, b_rotated = ? 
+                 WHERE stash_entry_id = ?`,
+                [item.qty, item.x, item.y, item.b_rotated ? 1 : 0, item.item_entry_id]
+            );
+        }
+
+        // 6. Insert New Items
+        if (toInsert.length > 0) {
+            const values = toInsert.map(item => [
                 stashId,
                 item.primary_asset_id,
                 item.qty,
@@ -92,12 +143,13 @@ router.post('/save', async (req: Request, res: Response): Promise<void> => {
                 item.b_rotated ? 1 : 0
             ]);
 
-            // Use query for bulk insert
             await connection.query(
                 'INSERT INTO stash_items (stash_id, primary_asset_id, qty, x, y, b_rotated) VALUES ?',
                 [values]
             );
         }
+
+        // --- Upsert Logic End ---
 
         await connection.commit();
         res.json({ message: 'Stash saved successfully', stash_id: stashId });

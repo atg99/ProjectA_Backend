@@ -79,12 +79,64 @@ router.post('/save', async (req: Request, res: Response): Promise<void> => {
             inventoryId = result.insertId;
         }
 
-        // 2. Clear existing items to overwrite
-        await connection.execute('DELETE FROM inventory_items WHERE inventory_id = ?', [inventoryId]);
+        // --- Upsert Logic Start ---
 
-        // 3. Insert new items
-        if (saved_entries.length > 0) {
-            const values = saved_entries.map(item => [
+        // 2. Fetch existing items from DB to identify what to Delete/Update
+        const [existingRows] = await connection.execute<RowDataPacket[]>(
+            'SELECT item_entry_id FROM inventory_items WHERE inventory_id = ?',
+            [inventoryId]
+        );
+        const existingIds = new Set(existingRows.map(r => r.item_entry_id));
+        const incomeIds = new Set<number>();
+
+        const toInsert: InventoryItem[] = [];
+        const toUpdate: InventoryItem[] = [];
+
+        // 3. Categorize Incoming Items
+        for (const item of saved_entries) {
+            // item_entry_id might be missing or 0 for new items
+            const id = item.item_entry_id;
+
+            if (id && id > 0 && existingIds.has(id)) {
+                // Exists in DB -> Update
+                toUpdate.push(item);
+                incomeIds.add(id);
+            } else {
+                // New or Invalid ID -> Insert
+                toInsert.push(item);
+            }
+        }
+
+        // 4. Execute DELETE for items NOT in incoming list
+        const toDeleteIds: number[] = [];
+        existingIds.forEach(id => {
+            if (!incomeIds.has(id)) {
+                toDeleteIds.push(id);
+            }
+        });
+
+        if (toDeleteIds.length > 0) {
+            // Use IN clause
+            const placeholders = toDeleteIds.map(() => '?').join(',');
+            await connection.execute(
+                `DELETE FROM inventory_items WHERE item_entry_id IN (${placeholders})`,
+                toDeleteIds
+            );
+        }
+
+        // 5. Execute UPDATE
+        for (const item of toUpdate) {
+            await connection.execute(
+                `UPDATE inventory_items 
+                 SET qty = ?, x = ?, y = ?, b_rotated = ? 
+                 WHERE item_entry_id = ?`,
+                [item.qty, item.x, item.y, item.b_rotated ? 1 : 0, item.item_entry_id]
+            );
+        }
+
+        // 6. Execute INSERT
+        if (toInsert.length > 0) {
+            const values = toInsert.map(item => [
                 inventoryId,
                 item.primary_asset_id,
                 item.qty,
@@ -93,12 +145,13 @@ router.post('/save', async (req: Request, res: Response): Promise<void> => {
                 item.b_rotated ? 1 : 0
             ]);
 
-            // Use query for bulk insert
             await connection.query(
                 'INSERT INTO inventory_items (inventory_id, primary_asset_id, qty, x, y, b_rotated) VALUES ?',
                 [values]
             );
         }
+
+        // --- Upsert Logic End ---
 
         await connection.commit();
         res.json({ message: 'Inventory saved successfully', inventory_id: inventoryId });
