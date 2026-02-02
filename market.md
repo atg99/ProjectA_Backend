@@ -128,25 +128,36 @@ Base URL: `/api/v1/market`
 - **Authentication**: Required (JWT Token)
 
 ### Request Parameters (Query)
-| Parameter | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `status` | String | No | 필터 (`active`: 판매중, `sold`: 판매완료, `history`: 전체) |
+| Parameter | Type | Required | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `status` | String | No | - | 필터 (`active`: 판매중, `sold`: 판매완료, `history`: 판매완료+취소 포함 전체) |
+| `page` | Integer | No | `1` | 페이지 번호 |
+| `limit` | Integer | No | `20` | 페이지 당 항목 수 |
+| `keyword` | String | No | - | 아이템 ID (`primary_asset_id`) 검색어 |
 
 ### Response (Success 200)
 ```json
-[
-  {
-    "listing_id": 101,
-    "seller_uid": 12,
-    "primary_asset_id": "sword_01",
-    "qty": 1,
-    "price": 1000,
-    "status": 0,
-    "item_metadata": { "rotated": false },
-    "created_at": "2026-01-28T10:00:00.000Z",
-    "sold_at": null
+{
+  "data": [
+    {
+      "listing_id": 101,
+      "seller_uid": 12,
+      "primary_asset_id": "sword_01",
+      "qty": 1,
+      "price": 1000,
+      "status": 0,
+      "item_metadata": { "rotated": false },
+      "created_at": "2026-01-28T10:00:00.000Z",
+      "sold_at": null
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 5,
+    "total_pages": 1
   }
-]
+}
 ```
 
 ---

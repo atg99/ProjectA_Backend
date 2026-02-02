@@ -354,7 +354,11 @@ router.get('/my-listings', async (req: Request, res: Response): Promise<void> =>
         return;
     }
 
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit as string) || 20);
+    const offset = (page - 1) * limit;
     const statusFilter = req.query.status as string;
+    const keyword = req.query.keyword as string;
 
     let query = `SELECT * FROM market_listings WHERE seller_uid = ?`;
     const params: any[] = [uid];
@@ -367,11 +371,48 @@ router.get('/my-listings', async (req: Request, res: Response): Promise<void> =>
         query += ` AND status IN (1, 2)`;
     }
 
+    if (keyword) {
+        query += ` AND primary_asset_id LIKE ?`;
+        params.push(`%${keyword}%`);
+    }
+
     query += ` ORDER BY created_at DESC`;
+
+    // Pagination
+    query += ` LIMIT ${limit} OFFSET ${offset}`;
 
     try {
         const [rows] = await pool.execute<RowDataPacket[]>(query, params);
-        res.json(rows);
+
+        // Count total for pagination
+        let countQuery = `SELECT COUNT(*) as total FROM market_listings WHERE seller_uid = ?`;
+        const countParams: any[] = [uid];
+
+        if (statusFilter === 'active') {
+            countQuery += ` AND status = 0`;
+        } else if (statusFilter === 'sold') {
+            countQuery += ` AND status = 1`;
+        } else if (statusFilter === 'history') {
+            countQuery += ` AND status IN (1, 2)`;
+        }
+
+        if (keyword) {
+            countQuery += ` AND primary_asset_id LIKE ?`;
+            countParams.push(`%${keyword}%`);
+        }
+
+        const [countRows] = await pool.execute<RowDataPacket[]>(countQuery, countParams);
+        const total = countRows[0].total;
+
+        res.json({
+            data: rows,
+            pagination: {
+                page,
+                limit,
+                total,
+                total_pages: Math.ceil(total / limit)
+            }
+        });
     } catch (error) {
         console.error('Error fetching my listings:', error);
         res.status(500).json({ message: 'Internal server error' });
