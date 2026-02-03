@@ -7,6 +7,7 @@ const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_key';
 
 // Register
+// Register
 router.post('/register', async (req: Request, res: Response): Promise<void> => {
     const { username, password } = req.body;
 
@@ -15,25 +16,41 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
         return;
     }
 
+    const connection = await pool.getConnection();
+
     try {
+        await connection.beginTransaction();
+
         // Hash password
         const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
 
-        // Check user existence (implied by unique constraint usually, but let's be explicit if needed or just catch error)
         // Insert user
-        const [result] = await pool.execute(
+        const [userResult] = await connection.execute<any>(
             'INSERT INTO users (username, password_hash) VALUES (?, ?)',
             [username, hashedPassword]
         );
 
+        const newUserId = userResult.insertId;
+
+        // Create Game Profile
+        await connection.execute(
+            'INSERT INTO game_profiles (uid) VALUES (?)',
+            [newUserId]
+        );
+
+        await connection.commit();
+
         res.status(201).json({ message: 'User registered successfully' });
     } catch (error: any) {
+        await connection.rollback();
         console.error(error);
         if (error.code === 'ER_DUP_ENTRY') {
             res.status(409).json({ message: 'Username already exists' });
         } else {
             res.status(500).json({ message: 'Internal server error' });
         }
+    } finally {
+        connection.release();
     }
 });
 
@@ -87,6 +104,70 @@ router.post('/verify', async (req: Request, res: Response): Promise<void> => {
     } catch (error) {
         console.error('[Verify] Validation failed:', error);
         res.status(401).json({ message: 'Invalid or expired token' });
+    }
+});
+
+// GET /profile
+router.get('/profile', async (req: Request, res: Response): Promise<void> => {
+    let token = (req.query.token as string) || (req.headers.authorization?.split(' ')[1]);
+
+    // Also check body if needed, though GET usually doesn't have body
+    if (!token && req.body && req.body.token) {
+        token = req.body.token;
+    }
+
+    if (!token) {
+        res.status(401).json({ message: 'Unauthorized: No token provided' });
+        return;
+    }
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET) as { uid: number; username: string };
+        const uid = decoded.uid;
+
+        // LEFT JOIN to check if profile exists
+        const query = `
+            SELECT u.username, p.level, p.exp, p.gold, p.last_pos_x, p.last_pos_y, p.last_pos_z
+            FROM users u
+            LEFT JOIN game_profiles p ON u.uid = p.uid
+            WHERE u.uid = ?
+        `;
+
+        const [rows] = await pool.execute<any[]>(query, [uid]);
+
+        if (rows.length === 0) {
+            res.status(404).json({ message: 'User not found' });
+            return;
+        }
+
+        const userData = rows[0];
+
+        // If p.level is null, it means game_profile is missing (Left Join result)
+        if (userData.level === null) {
+            console.warn(`[Profile] Profile missing for uid ${uid}. Creating default profile.`);
+
+            // Auto-create profile
+            await pool.execute('INSERT INTO game_profiles (uid) VALUES (?)', [uid]);
+
+            // Return default values manually since we just inserted default
+            const defaultProfile = {
+                username: userData.username,
+                level: 1,
+                exp: 0,
+                gold: 0,
+                last_pos_x: 0,
+                last_pos_y: 0,
+                last_pos_z: 0
+            };
+            res.json(defaultProfile);
+        } else {
+            // Profile exists
+            res.json(userData);
+        }
+
+    } catch (error) {
+        console.error('Error fetching profile:', error);
+        res.status(401).json({ message: 'Invalid token' });
     }
 });
 

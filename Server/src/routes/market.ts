@@ -1,7 +1,9 @@
 import { Router, Request, Response } from 'express';
 import pool from '../db/db';
 import { RowDataPacket, ResultSetHeader, Connection } from 'mysql2/promise';
+
 import jwt from 'jsonwebtoken';
+import { itemDataManager } from '../data/ItemDataManager';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_key';
@@ -280,20 +282,53 @@ router.post('/listings/:id/purchase', async (req: Request, res: Response): Promi
         }
 
         // Find empty spot
+        // Need primary_asset_id and b_rotated to calculate size of existing items
         const [stashItems] = await connection.execute<RowDataPacket[]>(
-            'SELECT x, y FROM stash_items WHERE stash_id = ?',
+            'SELECT x, y, primary_asset_id, b_rotated FROM stash_items WHERE stash_id = ?',
             [stashId]
         );
+
+        // Pre-calculate existing item rectangles for AABB collision
+        const existingRects = stashItems.map((item: any) => {
+            const size = itemDataManager.getItemSize(item.primary_asset_id, !!item.b_rotated);
+            return {
+                x: item.x,
+                y: item.y,
+                w: size.width,
+                h: size.height
+            };
+        });
 
         let placeX = 0;
         let placeY = 0;
         let placed = false;
-        const occupied = new Set<string>();
-        stashItems.forEach((i: any) => occupied.add(`${i.x},${i.y}`));
 
-        for (let y = 0; y < gridHeight; y++) {
-            for (let x = 0; x < gridWidth; x++) {
-                if (!occupied.has(`${x},${y}`)) {
+        // 2. Determine size of the NEW item
+        // 이미 객체라면 그대로 사용하고, 문자열일 경우에만 파싱
+        const metadata = (typeof listing.item_metadata === 'string')
+            ? JSON.parse(listing.item_metadata)
+            : (listing.item_metadata || {});
+        const isRotated = metadata.rotated ? 1 : 0;
+
+        const newItemSize = itemDataManager.getItemSize(listing.primary_asset_id, !!isRotated);
+        const newW = newItemSize.width;
+        const newH = newItemSize.height;
+
+        // 3. Find valid position using AABB
+        for (let y = 0; y <= gridHeight - newH; y++) {
+            for (let x = 0; x <= gridWidth - newW; x++) {
+                // Check collision with all existing items
+                let collision = false;
+                for (const rect of existingRects) {
+                    // Standard AABB Intersection Check
+                    if (x < rect.x + rect.w && x + newW > rect.x &&
+                        y < rect.y + rect.h && y + newH > rect.y) {
+                        collision = true;
+                        break;
+                    }
+                }
+
+                if (!collision) {
                     placeX = x;
                     placeY = y;
                     placed = true;
@@ -308,12 +343,6 @@ router.post('/listings/:id/purchase', async (req: Request, res: Response): Promi
             res.status(400).json({ message: 'Stash is full' });
             return;
         }
-
-        // 이미 객체라면 그대로 사용하고, 문자열일 경우에만 파싱
-        const metadata = (typeof listing.item_metadata === 'string')
-            ? JSON.parse(listing.item_metadata)
-            : (listing.item_metadata || {});
-        const isRotated = metadata.rotated ? 1 : 0;
 
         await connection.execute(
             `INSERT INTO stash_items (stash_id, primary_asset_id, qty, x, y, b_rotated)
