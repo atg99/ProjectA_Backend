@@ -48,5 +48,5 @@ import path from 'path';
 
 // Assuming running from Server/dist or Server/src, data is in Server/data
 // Adjust path relative to CWD
-const dataPath = path.join(process.cwd(), 'data', 'ItemData.csv');
+const dataPath = path.join(__dirname, 'data', 'ItemData.csv');
 itemDataManager.loadData(dataPath);

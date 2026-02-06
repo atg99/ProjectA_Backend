@@ -313,7 +313,7 @@ router.post('/listings/:id/purchase', async (req: Request, res: Response): Promi
         const newItemSize = itemDataManager.getItemSize(listing.primary_asset_id, !!isRotated);
         const newW = newItemSize.width;
         const newH = newItemSize.height;
-
+        
         // 3. Find valid position using AABB
         for (let y = 0; y <= gridHeight - newH; y++) {
             for (let x = 0; x <= gridWidth - newW; x++) {

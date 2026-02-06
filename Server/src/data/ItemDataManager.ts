@@ -37,13 +37,13 @@ class ItemDataManager {
             headers.forEach((h, i) => colMap.set(h, i));
 
             const idxId = colMap.get('PrimaryAssetId');
-            const idxW = colMap.get('Width');
-            const idxH = colMap.get('Height');
-            const idxStack = colMap.get('MaxStack');
+            const idxW = colMap.get('width');
+            const idxH = colMap.get('height');
+            const idxStack = colMap.get('max_stack');
             const idxPrice = colMap.get('sell_price'); // Defined in CSV as sell_price
 
             if (idxId === undefined || idxW === undefined || idxH === undefined) {
-                console.error('[ItemDataManager] CSV missing required columns (PrimaryAssetId, Width, Height)');
+                console.error('[ItemDataManager] CSV missing required columns (PrimaryAssetId, width, height)');
                 return;
             }
 
