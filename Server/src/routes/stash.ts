@@ -179,7 +179,7 @@ router.post('/load', async (req: Request, res: Response): Promise<void> => {
             res.json({
                 saved_entries: [],
                 grid_width: 10,
-                grid_height: 30
+                grid_height: 10
             });
             return;
         }
