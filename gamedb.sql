@@ -157,8 +157,3 @@ CREATE TABLE `market_logs` (
   INDEX `idx_log_item` (`primary_asset_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='거래소 거래 기록 (로그)';
 
-ALTER TABLE `inventory_items`
-ADD COLUMN `item_metadata` JSON NULL COMMENT '아이템 인스턴스 데이터' AFTER `primary_asset_id`;
-
-ALTER TABLE `stash_items`
-ADD COLUMN `item_metadata` JSON NULL COMMENT '아이템 인스턴스 데이터' AFTER `primary_asset_id`;
