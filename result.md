@@ -88,3 +88,23 @@
 - [x] Schema Refactoring (Union `GameMessage`)
 - [x] Test Client Verification (End-to-End Success)
 - [x] Inventory System (Save/Load API)
+
+cd ProjectA_Backend/Server
+npm install
+npm run build
+pm2 start npm --name "backend-server" -- run start
+pm2 save
+pm2 startup
+
+```markdown
+After modifying code and pulling from GitHub, remember this sequence:
+```
+```markdown
+After updating code: npm run build
+
+Restart server: pm2 restart backend-server
+
+Stop server: pm2 stop backend-server
+
+View server status: pm2 list
+```
